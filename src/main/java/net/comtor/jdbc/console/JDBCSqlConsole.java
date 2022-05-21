@@ -149,9 +149,6 @@ public class JDBCSqlConsole {
             System.exit(1);
         }
         
-        
-        
-        
         if (url == null) {
             url = JDBCURLHelper.generateURL(driver, host, port, database);
         }
