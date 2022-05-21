@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 /**
  * Implements a simple interactive console
  *
