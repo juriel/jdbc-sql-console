@@ -142,6 +142,7 @@ public class JDBCSqlConsole {
             System.out.println("ERROR " + e.getMessage());
             return;
         }
+        
 
         //List<String> ars = commandLine.getArgList();
         if (commandLine.hasOption("interactive") && (query.length() > 0 )) {
