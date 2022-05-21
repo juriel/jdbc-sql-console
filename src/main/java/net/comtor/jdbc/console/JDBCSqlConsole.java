@@ -144,7 +144,7 @@ public class JDBCSqlConsole {
         }
 
         //List<String> ars = commandLine.getArgList();
-        if (commandLine.hasOption("interactive") && (query != null || query.length() > 0 )) {
+        if (commandLine.hasOption("interactive") && (query.length() > 0 )) {
             System.err.println("error interactive with args");
             System.exit(1);
         }
