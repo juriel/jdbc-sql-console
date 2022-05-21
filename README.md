@@ -1,4 +1,4 @@
-# JDBCSQLConsole
+# jdbc-sql-console
 Command line program to connect to any database with JDBC driver.
 
 
