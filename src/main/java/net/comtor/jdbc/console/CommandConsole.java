@@ -32,14 +32,14 @@ public class CommandConsole {
         final String[] exitCommands = {"exit", "q"};
         final String[] helpCommands = {"--help", "?"};
         System.out.println(bundle.getString("console.welcome").replace("$v", JDBCSqlConsole.version).replace("$n", JDBCSqlConsole.name));
-        Console in = System.console();
-        if (in == null) {
+        Console console = System.console();
+        if (console == null) {
             System.err.println(bundle.getString("err.noconsole"));
         }
-        String opt = in.readLine();
-        while (opt != null && Arrays.binarySearch(exitCommands, opt.toLowerCase()) < 0) {
-            String[] commandParts = opt.split(" ");
-            if (Arrays.binarySearch(helpCommands, opt.toLowerCase()) >= 0) {
+        String command = console.readLine("> ");
+        while (command != null && Arrays.binarySearch(exitCommands, command.toLowerCase()) < 0) {
+            String[] commandParts = command.split(" ");
+            if (Arrays.binarySearch(helpCommands, command.toLowerCase()) >= 0) {
 //System.out.println("simple command caught");
                 JDBCSqlConsole.usage();
             } else if (commandParts.length > 1
@@ -49,8 +49,13 @@ public class CommandConsole {
                 JDBCSqlConsole.executeCommand(conn, commandParts[0], query);
             } else {
 //System.out.println("db command caught");
+
+                String sql = command;
+                while (!sql.trim().endsWith(";")) {
+                    sql = sql + console.readLine();
+                }
                 String outputFName = JDBCSqlConsole.getFilename();
-                String cmdOutput = CommandQuery.commandQuery(conn, opt, true, JDBCSqlConsole.getSeparator(), true);
+                String cmdOutput = CommandQuery.commandQuery(conn, sql, true, JDBCSqlConsole.getSeparator(), true);
                 if (outputFName != null) {
                     try {
                         BufferedWriter writer = new BufferedWriter(new FileWriter(outputFName));
@@ -64,7 +69,7 @@ public class CommandConsole {
                 }
             }
             System.out.println();
-            opt = in.readLine();
+            command = console.readLine("> ");
         }
     }
 
