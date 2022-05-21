@@ -148,6 +148,10 @@ public class JDBCSqlConsole {
             System.err.println("error interactive with args");
             System.exit(1);
         }
+        
+        
+        
+        
         if (url == null) {
             url = JDBCURLHelper.generateURL(driver, host, port, database);
         }
