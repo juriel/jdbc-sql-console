@@ -11,6 +11,7 @@ import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.StringJoiner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.cli.CommandLine;
@@ -131,60 +132,30 @@ public class JDBCSqlConsole {
             formatter.printHelp("java -jar jdbc-sql-console.jar", options);
             System.exit(0);
         }
-        List<String> ars = commandLine.getArgList();
 
-        if (commandLine.hasOption("interactive") && ars.size() != 0) {
+        parseArgs(commandLine);
+        try {
+            Class.forName(driver);
+
+        } catch (Exception e) {
+            System.out.println("Unable to load driver " + driver);
+            System.out.println("ERROR " + e.getMessage());
+            return;
+        }
+
+        //List<String> ars = commandLine.getArgList();
+        if (commandLine.hasOption("interactive") && (query != null || query.length() > 0 )) {
             System.err.println("error interactive with args");
             System.exit(1);
         }
-        if 
-            if (commandLine.hasOption("url")) {
-                url = commandLine.getOptionValue("url");
-            } else {
-
-            }
-
-        if (commandLine) {
+        if (url == null) {
             url = JDBCURLHelper.generateURL(driver, host, port, database);
         }
 
-        if (commandLine.hasOption("interactive") && ars.size() == 0) {
+        try (java.sql.Connection conn = DriverManager.getConnection(url, user, password)) {
 
-            for (String ar : ars) {
-                System.out.println("    " + ar);
-            }
-            System.exit(0);
+            if (commandLine.hasOption("interactive")) {
 
-            if (args.length == 0) {
-                usage();
-                return;
-            }
-            parseArgs(args);
-
-            if (!interactive) {
-                if (query == null || query.trim().length() == 0) {
-                    System.out.println(bundle.getString("error.noValidQuery") + (query == null ? "" : query));
-                    return;
-                }
-            }
-
-            try {
-                Class.forName(driver);
-            } catch (Exception e) {
-                System.out.println("Unable to load driver " + driver);
-                System.out.println("ERROR " + e.getMessage());
-                return;
-            }
-            java.sql.Connection conn = null;
-            try {
-                conn = DriverManager.getConnection(url, user, password);
-            } catch (SQLException ex) {
-                System.out.println("Unable to create connection " + url);
-                System.out.println("ERROR " + ex.getMessage());
-                return;
-            }
-
-            if (interactive) {
                 final CommandConsole commandConsole = new CommandConsole();
                 commandConsole.setConn(conn);
                 commandConsole.run();
@@ -194,13 +165,13 @@ public class JDBCSqlConsole {
                 }
                 executeCommand(conn, CMD, query);
             }
-            try {
-                conn.close();
-            } catch (SQLException ex) {
-            }
+        } catch (SQLException ex) {
+            System.out.println("Unable to create connection " + url);
+            System.out.println("ERROR " + ex.getMessage());
+            return;
         }
 
-    
+    }
 
     public static void parseArgs(CommandLine cmd) throws NumberFormatException {
         if (cmd.hasOption("url")) {
@@ -239,7 +210,7 @@ public class JDBCSqlConsole {
             user = cmd.getOptionValue("user");
         }
         if (cmd.hasOption("password")) {
-            user = cmd.getOptionValue("password");
+            password = cmd.getOptionValue("password");
         }
         if (cmd.hasOption("P")) {
             Console in = System.console();
@@ -252,67 +223,93 @@ public class JDBCSqlConsole {
 
         if (cmd.hasOption("hide-headers")) {
             showHeaders = false;
-
+        }
+        if (cmd.hasOption("show-metadata")) {
+            showMetaData = true;
+        }
+        if (cmd.hasOption("export")) {
+            String format = cmd.getOptionValue("export");
+            if (format.equalsIgnoreCase("csv")) {
+                CMD = CMD_EXPORT_CSV;
+            }
+            if (format.equalsIgnoreCase("xlsx")) {
+                CMD = CMD_EXPORT_EXCEL;
+            }
+            if (format.equalsIgnoreCase("class")) {
+                CMD = CMD_GENERATE_CREATE_CLASS;
+            }
+            if (format.equalsIgnoreCase("java")) {
+                CMD = CMD_GENERATE_CREATE_CLASS;
+            }
+            if (format.equalsIgnoreCase("CREATE_TABLE")) {
+                CMD = CMD_GENERATE_CREATE_TABLE;
+            }
+        }
+        if (cmd.hasOption("out-filename")) {
+            filename = cmd.getOptionValue("out-filename");
         }
 
+        List<String> args = cmd.getArgList();
+
+        StringJoiner j = new StringJoiner(" ");
+        for (String arg : args) {
+            j.add(arg);
+        }
+        query = j.toString();
         /*
-    
-              
-              
-              
-              else if (str.equals("-separator")) {
-                paramCounter++;
-                separator = args[paramCounter];
-            } else if (str.equals("-hide-headers")) {
-                showHeaders = false;
-            } else if (str.equals(showmetadataCMD)) {
-                showMetaData = true;
-            } else if (str.equals("-query")) {
-                CMD = CMD_QUERY;
-            } else if (str.equals(exporttocsvCMD)) {
-                CMD = CMD_EXPORT_CSV;
-            } else if (str.equals(exporttoexcelCMD)) {
-                CMD = CMD_EXPORT_EXCEL;
-            } else if (str.equals(generatecreatetableCMD)) {
-                CMD = CMD_GENERATE_CREATE_TABLE;
-            } else if (str.equals(generatecreateclassCMD)) {
-                CMD = CMD_GENERATE_CREATE_CLASS;
-            } else if (str.equals("-filename")) {
-                paramCounter++;
-                filename = args[paramCounter];
-            } else if (str.equals("-source")) {
-                paramCounter++;
-                sourceFilename = args[paramCounter];
-                try {
-                    getQueryFromFile();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            } else if (str.equals("-ds")) {
-                displaySourceQuery = true;
-            } else if (Arrays.binarySearch(interactiveCommands, str.toLowerCase()) >= 0) {
-                interactive = true;
-            } else if (str.startsWith("--help")) {//General help
-                if (size > paramCounter + 1) {
-                    paramCounter++;
-                    String ctxhelp = args[paramCounter];
-                    //Specific help
-                    if (ctxhelp.toLowerCase().equals("sqlserver")) {
-                        System.out.println(bundle.getString("sqlserver.help"));
-                        System.exit(0);
-                    } else if (ctxhelp.toLowerCase().equals("oracle")) {
-                        System.out.println(bundle.getString("oracle.help"));
-                        System.exit(0);
-                    } else if (ctxhelp.toLowerCase().equals("mysql")) {
-                        System.out.println(bundle.getString("mysql.help"));
-                        System.exit(0);
-                    }
-                }
-                usage();
-                System.exit(0);
-            } else {
-                query = str;
-            }
+        else if (str.equals("-separator")) {
+        paramCounter++;
+        separator = args[paramCounter];
+        } else if (str.equals("-hide-headers")) {
+        showHeaders = false;
+        } else if (str.equals(showmetadataCMD)) {
+        showMetaData = true;
+        } else if (str.equals("-query")) {
+        CMD = CMD_QUERY;
+        } else if (str.equals(exporttocsvCMD)) {
+        CMD = CMD_EXPORT_CSV;
+        } else if (str.equals(exporttoexcelCMD)) {
+        CMD = CMD_EXPORT_EXCEL;
+        } else if (str.equals(generatecreatetableCMD)) {
+        CMD = CMD_GENERATE_CREATE_TABLE;
+        } else if (str.equals(generatecreateclassCMD)) {
+        CMD = CMD_GENERATE_CREATE_CLASS;
+        } else if (str.equals("-filename")) {
+        paramCounter++;
+        filename = args[paramCounter];
+        } else if (str.equals("-source")) {
+        paramCounter++;
+        sourceFilename = args[paramCounter];
+        try {
+        getQueryFromFile();
+        } catch (IOException ex) {
+        ex.printStackTrace();
+        }
+        } else if (str.equals("-ds")) {
+        displaySourceQuery = true;
+        } else if (Arrays.binarySearch(interactiveCommands, str.toLowerCase()) >= 0) {
+        interactive = true;
+        } else if (str.startsWith("--help")) {//General help
+        if (size > paramCounter + 1) {
+        paramCounter++;
+        String ctxhelp = args[paramCounter];
+        //Specific help
+        if (ctxhelp.toLowerCase().equals("sqlserver")) {
+        System.out.println(bundle.getString("sqlserver.help"));
+        System.exit(0);
+        } else if (ctxhelp.toLowerCase().equals("oracle")) {
+        System.out.println(bundle.getString("oracle.help"));
+        System.exit(0);
+        } else if (ctxhelp.toLowerCase().equals("mysql")) {
+        System.out.println(bundle.getString("mysql.help"));
+        System.exit(0);
+        }
+        }
+        usage();
+        System.exit(0);
+        } else {
+        query = str;
+        }
         }
          */
     }
@@ -355,8 +352,10 @@ public class JDBCSqlConsole {
                     BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
                     writer.write(CommandQuery.commandQuery(conn, queryStr, showHeaders, ",", showMetaData));
                     writer.close();
+
                 } catch (IOException ex) {
-                    Logger.getLogger(JDBCSqlConsole.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(JDBCSqlConsole.class
+                            .getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }
