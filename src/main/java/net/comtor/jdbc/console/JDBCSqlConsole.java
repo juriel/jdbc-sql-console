@@ -1,4 +1,4 @@
-package net.comtor.jdbc.console;        
+package net.comtor.jdbc.console;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -9,13 +9,22 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.*;
 import java.util.Arrays;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 /**
  *
  * Clase principal
+ *
  * @author juriel
  */
 public class JDBCSqlConsole {
@@ -68,98 +77,190 @@ public class JDBCSqlConsole {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        if (args.length == 0) {
-            usage();
-            return;
-        }
-        parseArgs(args);
 
-        if (!interactive) {
-            if (query == null || query.trim().length() == 0) {
-                System.out.println(bundle.getString("error.noValidQuery") + (query == null ? "" : query));
-                return;
+        Options options = new Options();
+        options.addOption(Option.builder("?").longOpt("help").desc("Print help").build());
+        options.addOption(Option.builder("i").longOpt("interactive").desc("Opens a command shell").build());
+        options.addOption(Option.builder().longOpt("driver").hasArg().argName("jdbc driver").desc("JDBC driver i.e: com.mysql.jdbc.Driver").build());
+
+        options.addOption(Option.builder().longOpt("mysql").desc("to use mysql driver try: help.mysql").build());
+
+        options.addOption(Option.builder().longOpt("oracle").desc("to use oracle driver try: help.oracle").build());
+
+        options.addOption(Option.builder().longOpt("postgresql").desc("to use postgresql driver try: help.postgresql").build());
+
+        options.addOption(Option.builder().longOpt("sqlserver").desc("to use sqlserver driver try: help.sqlserver").build());
+
+        options.addOption(Option.builder().longOpt("help.mysql").desc("print mysql help").build());
+        options.addOption(Option.builder().longOpt("help.oracle").desc("print oracle help").build());
+        options.addOption(Option.builder().longOpt("help.postgresql").desc("print postgresql help").build());
+        options.addOption(Option.builder().longOpt("help.sqlserver").desc("print sqlserver help").build());
+
+        options.addOption(Option.builder("u").longOpt("user").hasArg().argName("username/login").desc("user to connnect to database").build());
+        options.addOption(Option.builder("p").longOpt("password").hasArg().argName("password").desc("password to connnect to database").build());
+        options.addOption(Option.builder("P").desc("with no password: Password will be prompted by the console and won't be visible on screen").build());
+
+        options.addOption(Option.builder().longOpt("url").hasArg().argName("jdbc url").desc("JDBC URL").build());
+        options.addOption(Option.builder("h").longOpt("host").hasArg().argName("hostname").desc("hostname").build());
+        options.addOption(Option.builder().longOpt("port").hasArg().argName("port").desc("port").build());
+        options.addOption(Option.builder().longOpt("database").hasArg().argName("database").desc("database").build());
+        options.addOption(Option.builder().longOpt("SID").hasArg().argName("SID").desc("SID for oracle databases").build());
+
+        options.addOption(Option.builder().longOpt("separator").hasArg().argName("column separator").desc("").build());
+        options.addOption(Option.builder().longOpt("hide-headers").desc("Hide result headers").build());
+        options.addOption(Option.builder().longOpt("show-metadata").desc("show result metadata").build());
+        options.addOption(Option.builder().longOpt("out-filename").hasArg().argName("filename").desc("Output filename").build());
+
+        options.addOption(Option.builder().longOpt("export").hasArg().argName("format").desc("formats CSV, XLSX, CREATE_TABLE, JAVA").build());
+
+        CommandLineParser parser = new DefaultParser(true);
+        CommandLine commandLine = null;
+        try {
+            commandLine = parser.parse(options, args);
+        } catch (ParseException ex) {
+            System.err.println(ex.getMessage());
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.setOptionComparator(null);
+            formatter.printHelp("java -jar jdbc-sql-console.jar", options);
+            System.exit(0);
+        }
+
+        if (commandLine.hasOption("help")) {
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.setOptionComparator(null);
+            formatter.printHelp("java -jar jdbc-sql-console.jar", options);
+            System.exit(0);
+        }
+        List<String> ars = commandLine.getArgList();
+
+        if (commandLine.hasOption("interactive") && ars.size() != 0) {
+            System.err.println("error interactive with args");
+            System.exit(1);
+        }
+        if 
+            if (commandLine.hasOption("url")) {
+                url = commandLine.getOptionValue("url");
+            } else {
+
             }
-        }
 
-        if (url == null) {
+        if (commandLine) {
             url = JDBCURLHelper.generateURL(driver, host, port, database);
         }
 
-        try {
-            Class.forName(driver);
-        } catch (Exception e) {
-            System.out.println("Unable to load driver " + driver);
-            System.out.println("ERROR " + e.getMessage());
-            return;
-        }
-        java.sql.Connection conn = null;
-        try {
-            conn = DriverManager.getConnection(url, user, password);
-        } catch (SQLException ex) {
-            System.out.println("Unable to create connection " + url);
-            System.out.println("ERROR " + ex.getMessage());
-            return;
-        }
+        if (commandLine.hasOption("interactive") && ars.size() == 0) {
 
-        if (interactive) {
-            final CommandConsole commandConsole = new CommandConsole();
-            commandConsole.setConn(conn);
-            commandConsole.run();
-        } else {
-            if (CMD == -1) {
-                CMD = CMD_QUERY;
+            for (String ar : ars) {
+                System.out.println("    " + ar);
             }
-            executeCommand(conn, CMD, query);
-        }
-        try {
-            conn.close();
-        } catch (SQLException ex) {
-        }
-    }
+            System.exit(0);
 
-    public static void parseArgs(String[] args) throws NumberFormatException {
-        int size = args.length;
-        String[] interactiveCommands = {"-i", "-interactive"};
-        int paramCounter;
-        for (paramCounter = 0; paramCounter < size; paramCounter++) {
-            String str = args[paramCounter];
+            if (args.length == 0) {
+                usage();
+                return;
+            }
+            parseArgs(args);
 
-            if (str.equals("-url")) {
-                paramCounter++;
-                url = args[paramCounter];
-            } else if (str.equals("-oracle")) {
-                driver = DRIVER_ORACLE;
-            } else if (str.equals("-mysql")) {
-                driver = DRIVER_MYSQL;
-            } else if (str.equals("-sqlserver")) {
-                driver = DRIVER_SQLSERVER;
-            } else if (str.equals("-postgresql")) {
-                driver = DRIVER_POSTGRESQL;
-            } else if (str.equals("-sybase")) {
-                driver = DRIVER_SYBASE;
-            } else if (str.equals("-host")) {
-                paramCounter++;
-                host = args[paramCounter];
-            } else if (str.equals("-port")) {
-                paramCounter++;
-                port = Integer.parseInt(args[paramCounter]);
-            } else if (str.equals("-database") || str.equals("-sid")) {
-                paramCounter++;
-                database = args[paramCounter];
-            } else if (str.equals("-driver")) {
-                paramCounter++;
-                driver = args[paramCounter];
-            } else if (str.equals("-user")) {
-                paramCounter++;
-                user = args[paramCounter];
-            } else if (str.equals("-password")) {
-                paramCounter++;
-                password = args[paramCounter];
-            } else if (str.equals("-P")) {
-                Console in = System.console();
-                System.out.println(bundle.getString("password.prompt"));
-                password = new String(in.readPassword());
-            } else if (str.equals("-separator")) {
+            if (!interactive) {
+                if (query == null || query.trim().length() == 0) {
+                    System.out.println(bundle.getString("error.noValidQuery") + (query == null ? "" : query));
+                    return;
+                }
+            }
+
+            try {
+                Class.forName(driver);
+            } catch (Exception e) {
+                System.out.println("Unable to load driver " + driver);
+                System.out.println("ERROR " + e.getMessage());
+                return;
+            }
+            java.sql.Connection conn = null;
+            try {
+                conn = DriverManager.getConnection(url, user, password);
+            } catch (SQLException ex) {
+                System.out.println("Unable to create connection " + url);
+                System.out.println("ERROR " + ex.getMessage());
+                return;
+            }
+
+            if (interactive) {
+                final CommandConsole commandConsole = new CommandConsole();
+                commandConsole.setConn(conn);
+                commandConsole.run();
+            } else {
+                if (CMD == -1) {
+                    CMD = CMD_QUERY;
+                }
+                executeCommand(conn, CMD, query);
+            }
+            try {
+                conn.close();
+            } catch (SQLException ex) {
+            }
+        }
+
+    
+
+    public static void parseArgs(CommandLine cmd) throws NumberFormatException {
+        if (cmd.hasOption("url")) {
+            url = cmd.getOptionValue("url");
+        }
+        if (cmd.hasOption("driver")) {
+            driver = cmd.getOptionValue("driver");;
+        }
+        if (cmd.hasOption("mysql")) {
+            driver = DRIVER_MYSQL;
+        }
+        if (cmd.hasOption("postgresql")) {
+            driver = DRIVER_POSTGRESQL;
+        }
+        if (cmd.hasOption("oracle")) {
+            driver = DRIVER_ORACLE;
+        }
+        if (cmd.hasOption("oracle")) {
+            driver = DRIVER_SQLSERVER;
+        }
+
+        if (cmd.hasOption("host")) {
+            host = cmd.getOptionValue("host", "localhost");
+        }
+        if (cmd.hasOption("port")) {
+            port = Integer.parseInt(cmd.getOptionValue("host"));
+        }
+        if (cmd.hasOption("database")) {
+            database = cmd.getOptionValue("database");
+        }
+        if (cmd.hasOption("sid")) {
+            database = cmd.getOptionValue("sid");
+        }
+
+        if (cmd.hasOption("user")) {
+            user = cmd.getOptionValue("user");
+        }
+        if (cmd.hasOption("password")) {
+            user = cmd.getOptionValue("password");
+        }
+        if (cmd.hasOption("P")) {
+            Console in = System.console();
+            System.out.println(bundle.getString("password.prompt"));
+            password = new String(in.readPassword());
+        }
+        if (cmd.hasOption("separator")) {
+            separator = cmd.getOptionValue("separator");
+        }
+
+        if (cmd.hasOption("hide-headers")) {
+            showHeaders = false;
+
+        }
+
+        /*
+    
+              
+              
+              
+              else if (str.equals("-separator")) {
                 paramCounter++;
                 separator = args[paramCounter];
             } else if (str.equals("-hide-headers")) {
@@ -213,6 +314,7 @@ public class JDBCSqlConsole {
                 query = str;
             }
         }
+         */
     }
 
     protected static void usage() {
